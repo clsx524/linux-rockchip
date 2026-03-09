@@ -34,7 +34,24 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export $(dpkg-architecture -aarm64)
           export LANG=C
-          fakeroot debian/rules clean binary-headers binary-rockchip do_mainline_build=true
+
+          # Run clean first to create the build directory structure
+          fakeroot debian/rules clean do_mainline_build=true
+
+          # The Mali bifrost/valhall drivers use .incbin with paths relative to
+          # the source root, but the out-of-tree build runs from the build dir.
+          # Symlink the firmware blobs into the build directory so the assembler
+          # can find them.
+          BUILD_DIR="debian/build/build-rockchip"
+          mkdir -p "${BUILD_DIR}"
+          for blob in $(find drivers/gpu/arm -name "*.bin" 2>/dev/null); do
+            TARGET="${BUILD_DIR}/${blob}"
+            mkdir -p "$(dirname "${TARGET}")"
+            ln -sf "$(pwd)/${blob}" "${TARGET}"
+          done
+
+          # Now build the packages
+          fakeroot debian/rules binary-headers binary-rockchip do_mainline_build=true
 
       - name: List produced packages
         run: ls -lh ../*.deb
