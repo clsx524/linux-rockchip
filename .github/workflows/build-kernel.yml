@@ -9,6 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -53,14 +55,18 @@ jobs:
           # Now build the packages
           fakeroot debian/rules binary-headers binary-rockchip do_mainline_build=true
 
+          # Move debs into a local dir (../*.deb not allowed in upload-artifact)
+          mkdir -p debs
+          mv ../*.deb debs/
+
       - name: List produced packages
-        run: ls -lh ../*.deb
+        run: ls -lh debs/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: kernel-debs
-          path: ../*.deb
+          path: debs/
           retention-days: 30
 
       - name: Create GitHub Release with .deb files
@@ -69,8 +75,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(dpkg-parsechangelog -l debian.rockchip/changelog -S Version)
-          TAG="kernel-${VERSION}"
-          gh release create "${TAG}" ../*.deb \
-            --title "Kernel ${VERSION} (questing)" \
+          TAG="kernel-${VERSION//\~/-}"
+          gh release create "${TAG}" debs/*.deb \
+            --title "Kernel ${VERSION} for questing" \
             --notes "Automated build from questing branch" \
             --repo ${{ github.repository }} || true
