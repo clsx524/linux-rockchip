@@ -80,3 +80,20 @@ jobs:
             --title "Kernel ${VERSION} for questing" \
             --notes "Automated build from questing branch" \
             --repo ${{ github.repository }} || true
+
+      - name: Ingest into apt repo
+        if: github.ref == 'refs/heads/questing'
+        env:
+          GH_TOKEN: ${{ secrets.APT_REPO_TOKEN }}
+        run: |
+          VERSION=$(dpkg-parsechangelog -l debian.rockchip/changelog -S Version)
+          TAG="kernel-${VERSION//\~/-}"
+          for DEB_URL in $(gh release view "${TAG}" \
+              --repo ${{ github.repository }} \
+              --json assets -q '.assets[].url'); do
+            gh workflow run ingest.yml \
+              --repo clsx524/ubuntu-rockchip-apt \
+              --field deb_url="${DEB_URL}" \
+              --field suite=questing
+            sleep 25
+          done
