@@ -1,0 +1,57 @@
+name: Build kernel packages
+
+on:
+  push:
+    branches: [questing]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            fakeroot \
+            dpkg-dev \
+            libssl-dev \
+            libelf-dev \
+            bison flex \
+            bc cpio rsync kmod
+
+      - name: Build kernel .deb packages
+        run: |
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export $(dpkg-architecture -aarm64)
+          export LANG=C
+          fakeroot debian/rules clean binary-headers binary-rockchip do_mainline_build=true
+
+      - name: List produced packages
+        run: ls -lh ../*.deb
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-debs
+          path: ../*.deb
+          retention-days: 30
+
+      - name: Create GitHub Release with .deb files
+        if: github.ref == 'refs/heads/questing'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(dpkg-parsechangelog -l debian.rockchip/changelog -S Version)
+          TAG="kernel-${VERSION}"
+          gh release create "${TAG}" ../*.deb \
+            --title "Kernel ${VERSION} (questing)" \
+            --notes "Automated build from questing branch" \
+            --repo ${{ github.repository }} || true
