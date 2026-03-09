@@ -21,11 +21,13 @@ jobs:
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu \
             fakeroot \
+            debhelper \
             dpkg-dev \
             libssl-dev \
             libelf-dev \
             bison flex \
-            bc cpio rsync kmod
+            bc cpio rsync kmod \
+            dwarves python3-dev
 
       - name: Build kernel .deb packages
         run: |
