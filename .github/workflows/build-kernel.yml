@@ -2,7 +2,7 @@ name: Build kernel packages
 
 on:
   push:
-    branches: [questing]
+    branches: [resolute]
   workflow_dispatch:
 
 jobs:
@@ -70,19 +70,19 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release with .deb files
-        if: github.ref == 'refs/heads/questing'
+        if: github.ref == 'refs/heads/resolute'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(dpkg-parsechangelog -l debian.rockchip/changelog -S Version)
           TAG="kernel-${VERSION//\~/-}"
           gh release create "${TAG}" debs/*.deb \
-            --title "Kernel ${VERSION} for questing" \
-            --notes "Automated build from questing branch" \
+            --title "Kernel ${VERSION} for resolute" \
+            --notes "Automated build from resolute branch" \
             --repo ${{ github.repository }} || true
 
       - name: Ingest into apt repo
-        if: github.ref == 'refs/heads/questing'
+        if: github.ref == 'refs/heads/resolute'
         env:
           GH_TOKEN: ${{ secrets.APT_REPO_TOKEN }}
         run: |
@@ -94,6 +94,6 @@ jobs:
             gh workflow run ingest.yml \
               --repo clsx524/ubuntu-rockchip-apt \
               --field deb_url="${DEB_URL}" \
-              --field suite=questing
+              --field suite=resolute
             sleep 25
           done
